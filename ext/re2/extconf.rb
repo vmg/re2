@@ -6,43 +6,36 @@
 
 require 'mkmf'
 
-incl, lib = dir_config("re2", "/usr/local/include", "/usr/local/lib")
+def sys(cmd)
+  puts " -- #{cmd}"
+  unless ret = xsystem(cmd)
+    raise "ERROR: '#{cmd}' failed"
+  end
+  ret
+end
 
-$CFLAGS << " -Wall -Wextra -funroll-loops"
+if !(MAKE = find_executable('gmake') || find_executable('make'))
+  abort "ERROR: GNU make is required to build re2."
+end
+
+CWD = File.expand_path(File.dirname(__FILE__))
+RE2_DIR = File.join(CWD, '..', '..', 'vendor', 're2')
+
+Dir.chdir(RE2_DIR) do
+  sys("CXXFLAGS=\"-Wall -O3 -g -pthread -fPIC\" #{MAKE} obj/libre2.a")
+end
+
+$DEFLIBPATH.unshift("#{RE2_DIR}/obj")
+$INCFLAGS << " -I#{RE2_DIR}"
+$CFLAGS << " -Wall -Wextra -funroll-loops -fPIC"
+$defs.push("-DHAVE_ENDPOS_ARGUMENT")
 
 have_library("stdc++")
 have_header("stdint.h")
 have_func("rb_str_sublen")
 
-if have_library("re2")
-
-  # Determine which version of re2 the user has installed.
-  # Revision d9f8806c004d added an `endpos` argument to the
-  # generic Match() function.
-  #
-  # To test for this, try to compile a simple program that uses
-  # the newer form of Match() and set a flag if it is successful.
-  checking_for("RE2::Match() with endpos argument") do
-    test_re2_match_signature = <<SRC
-#include <re2/re2.h>
-
-int main() {
-  RE2 pattern("test");
-  re2::StringPiece *match;
-  pattern.Match("test", 0, 0, RE2::UNANCHORED, match, 0);
-
-  return 0;
-}
-SRC
-
-    # Pass -x c++ to force gcc to compile the test program
-    # as C++ (as it will end in .c by default).
-    if try_compile(test_re2_match_signature, "-x c++")
-      $defs.push("-DHAVE_ENDPOS_ARGUMENT")
-    end
-  end
-
-  create_makefile("re2")
-else
-  abort "You must have re2 installed and specified with --with-re2-dir, please see http://code.google.com/p/re2/wiki/Install"
+unless have_library 're2'
+  abort "ERROR: Failed to build re2"
 end
+
+create_makefile("re2")

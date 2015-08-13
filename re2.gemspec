@@ -18,6 +18,8 @@ Gem::Specification.new do |s|
     "README.md",
     "Rakefile"
   ]
+  s.files += Dir.glob("vendor/re2/{Makefile,README,LICENSE}")
+  s.files += Dir.glob("vendor/re2/{re2,util}/**/*")
   s.test_files = [
     "spec/spec_helper.rb",
     "spec/re2_spec.rb",
